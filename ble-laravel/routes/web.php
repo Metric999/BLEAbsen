@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\MahasiswaController;
 use App\Http\Controllers\Admin\DosenController;
 use App\Http\Controllers\Admin\JadwalController;
 use App\Http\Controllers\Admin\RuanganController;
+use App\Http\Controllers\Admin\MataKuliahController;
 use Illuminate\Support\Facades\Route;
 
 // ─── Auth Admin ───────────────────────────────────────────────────────
@@ -23,6 +24,7 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::resource('dosen',   DosenController::class);
     Route::resource('jadwal',  JadwalController::class);
     Route::resource('ruangan', RuanganController::class);
+    Route::resource('matakuliah', MataKuliahController::class);
 });
 
 Route::redirect('/', '/admin');
