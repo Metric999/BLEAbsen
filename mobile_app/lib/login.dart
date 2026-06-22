@@ -11,7 +11,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Login Absensi BLE',
+      title: 'Logiin Absensi BLE',
       theme: ThemeData(
         fontFamily: 'Arial', // Sesuai font-family di HTML
       ),

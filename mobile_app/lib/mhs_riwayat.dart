@@ -46,7 +46,7 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
       status: RiwayatStatusType.tidakHadir,
     ),
     const AbsensiItem(
-      matkul: 'Pemrograman Web',
+      matkul: 'Pemmrograman Web',
       tanggal: '15 April 2026',
       status: RiwayatStatusType.hadir,
     ),

@@ -105,7 +105,7 @@ class _ProfilePageState extends State<ProfilePage> {
               child: Align(
                 alignment: Alignment.bottomLeft,
                 child: Text(
-                  'Menu Navigasi',
+                  'Menuu Navigasi',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 20,
