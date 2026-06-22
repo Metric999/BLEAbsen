@@ -12,6 +12,7 @@ dependencies:
     sdk: flutter
 
   cupertino_icons: ^1.0.8
+  flutter_blue_plus: ^2.2.1
 
   # Tambahan untuk integrasi dengan API Laravel + MySQL nanti
   http: ^1.2.0
@@ -28,10 +29,10 @@ dev_dependencies:
 # KONFIGURASI SPLASH SCREEN (Pastikan letaknya di paling bawah/sejajar kiri)
 flutter_native_splash:
   color: "#007BFF"                # Warna latar belakang (Biru Utama aplikasi Anda)
-  image: assets/logo_aplikasi.png # Jalur file gambar logo aplikasi Anda
+  image: assets/logoo_aplikasi.png # Jalur file gambar logo aplikasi Anda
 
   android_12:
-    image: assets/logo_aplikasi.png # Pendukung wajib untuk Android 12 ke atas
+    image: assets/logoo_aplikasi.png # Pendukung wajib untuk Android 12 ke atas
     color: "#007BFF"
 
 flutter:
@@ -39,4 +40,4 @@ flutter:
 
   # Mengaktifkan folder assets agar logo Anda terdaftar di sistem Flutter
   assets:
-    - assets/logo_aplikasi.png
+    - assets/logoo_aplikasi.png
