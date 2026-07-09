@@ -1,43 +1,37 @@
-name: mobile_app
-description: "A new Flutter project."
+name: ble_absen
+description: Sistem Informasi Absensi Perkuliahan Berbasis IoT dengan BLE Beacon
 publish_to: 'none'
-
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.11.4
+  sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
 
-  cupertino_icons: ^1.0.8
-  flutter_blue_plus: ^2.2.1
+  # ── Networking ──
+  dio: ^5.4.0
 
-  # Tambahan untuk integrasi dengan API Laravel + MySQL nanti
-  http: ^1.2.0
+  # ── BLE Scanning ──
+  flutter_blue_plus: ^1.31.0
+
+  # ── Secure Token Storage ──
+  flutter_secure_storage: ^9.0.0
+
+  # ── State Management (sederhana, tanpa boilerplate provider) ──
+  provider: ^6.1.0
+
+  # ── Utilities ──
+  intl: ^0.19.0
+  permission_handler: ^11.3.0
+
+  cupertino_icons: ^1.0.6
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
-  flutter_lints: ^6.0.0
-
-  # Tambahan untuk membuat Splash Screen otomatis
-  flutter_native_splash: ^2.4.1
-
-# KONFIGURASI SPLASH SCREEN (Pastikan letaknya di paling bawah/sejajar kiri)
-flutter_native_splash:
-  color: "#007BFF"                # Warna latar belakang (Biru Utama aplikasi Anda)
-  image: assets/logoo_aplikasi.png # Jalur file gambar logo aplikasi Anda
-
-  android_12:
-    image: assets/logoo_aplikasi.png # Pendukung wajib untuk Android 12 ke atas
-    color: "#007BFF"
+  flutter_lints: ^4.0.0
 
 flutter:
   uses-material-design: true
-
-  # Mengaktifkan folder assets agar logo Anda terdaftar di sistem Flutter
-  assets:
-    - assets/logoo_aplikasi.png

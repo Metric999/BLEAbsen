@@ -52,4 +52,27 @@ class AuthController extends Controller
     {
         return response()->json($request->user());
     }
+
+    public function changePassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'password_lama'         => 'required|string',
+            'password_baru'         => 'required|string|min:6',
+            'password_baru_confirm' => 'required|string|same:password_baru',
+        ]);
+
+        $user = $request->user();
+
+        if (! Hash::check($request->password_lama, $user->password)) {
+            throw ValidationException::withMessages([
+                'password_lama' => ['Password lama tidak sesuai.'],
+            ]);
+        }
+
+        $user->update([
+            'password' => Hash::make($request->password_baru),
+        ]);
+
+        return response()->json(['message' => 'Password berhasil diubah.']);
+    }
 }

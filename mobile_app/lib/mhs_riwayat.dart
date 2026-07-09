@@ -1,22 +1,67 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
+
+import 'main.dart';
 import 'mhs_dashboard.dart';
-import 'mhs_profile.dart'; // Mengimpor file profile agar bisa dipanggil
+import 'mhs_profile.dart';
 
-// 1. MODEL DATA UNTUK ITEM RIWAYAT
-class AbsensiItem {
-  final String matkul;
-  final String tanggal;
-  final RiwayatStatusType status;
+// ═══════════════════════════════════════════════════════════════════════
+// MODEL & ENUM: Status absensi — disesuaikan dengan enum Laravel
+// enum('hadir', 'izin', 'alpha') — juga dipakai oleh dosen_rekap.dart
+// ═══════════════════════════════════════════════════════════════════════
+enum AbsensiStatus { hadir, izin, alpha }
 
-  const AbsensiItem({
-    required this.matkul,
-    required this.tanggal,
-    required this.status,
-  });
+AbsensiStatus parseAbsensiStatus(String? raw) {
+  switch (raw) {
+    case 'hadir':
+      return AbsensiStatus.hadir;
+    case 'izin':
+      return AbsensiStatus.izin;
+    default:
+      return AbsensiStatus.alpha;
+  }
 }
 
-enum RiwayatStatusType { hadir, terlambat, tidakHadir }
+String absensiStatusLabel(AbsensiStatus status) {
+  switch (status) {
+    case AbsensiStatus.hadir:
+      return 'Hadir';
+    case AbsensiStatus.izin:
+      return 'Izin';
+    case AbsensiStatus.alpha:
+      return 'Alpha';
+  }
+}
 
+class AbsensiModel {
+  final int idAbsensi;
+  final String tanggal;
+  final AbsensiStatus status;
+  final String? keterangan;
+  final JadwalModel jadwal;
+
+  AbsensiModel({
+    required this.idAbsensi,
+    required this.tanggal,
+    required this.status,
+    this.keterangan,
+    required this.jadwal,
+  });
+
+  factory AbsensiModel.fromJson(Map<String, dynamic> json) {
+    return AbsensiModel(
+      idAbsensi: json['id_absensi'],
+      tanggal: json['tanggal'] ?? '',
+      status: parseAbsensiStatus(json['status']),
+      keterangan: json['keterangan'],
+      jadwal: JadwalModel.fromJson(json['jadwal'] ?? {}),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// RIWAYAT ABSENSI PAGE — fetch dari GET /mahasiswa/absensi/riwayat
+// ═══════════════════════════════════════════════════════════════════════
 class RiwayatAbsensiPage extends StatefulWidget {
   const RiwayatAbsensiPage({super.key});
 
@@ -25,65 +70,76 @@ class RiwayatAbsensiPage extends StatefulWidget {
 }
 
 class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
-  // GlobalKey untuk mengontrol buka-tutup Drawer di Halaman Riwayat
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final Dio _dio = ApiClient.instance;
 
-  // 2. DATA DUMMY
-  final List<AbsensiItem> _riwayatList = [
-    const AbsensiItem(
-      matkul: 'Pengujian Perangkat Lunak',
-      tanggal: '12 April 2026',
-      status: RiwayatStatusType.hadir,
-    ),
-    const AbsensiItem(
-      matkul: 'Basis Data',
-      tanggal: '13 April 2026',
-      status: RiwayatStatusType.terlambat,
-    ),
-    const AbsensiItem(
-      matkul: 'Jaringan Komputer',
-      tanggal: '14 April 2026',
-      status: RiwayatStatusType.tidakHadir,
-    ),
-    const AbsensiItem(
-      matkul: 'Pemmrograman Web',
-      tanggal: '15 April 2026',
-      status: RiwayatStatusType.hadir,
-    ),
-  ];
+  List<AbsensiModel> _riwayatList = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRiwayat();
+  }
+
+  Future<void> _loadRiwayat() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final response = await _dio.get('/mahasiswa/absensi/riwayat');
+      final List items = response.data['data'] ?? [];
+
+      setState(() {
+        _riwayatList = items.map((e) => AbsensiModel.fromJson(e)).toList();
+        _isLoading = false;
+      });
+    } on DioException catch (e) {
+      setState(() {
+        _errorMessage = extractErrorMessage(e);
+        _isLoading = false;
+      });
+    }
+  }
+
+  int get _totalHadirBulanIni {
+    final now = DateTime.now();
+    return _riwayatList.where((a) {
+      final date = DateTime.tryParse(a.tanggal);
+      return a.status == AbsensiStatus.hadir &&
+          date != null &&
+          date.month == now.month &&
+          date.year == now.year;
+    }).length;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      key: _scaffoldKey, // Pasangkan key ke Scaffold agar bisa membuka Drawer
+      key: _scaffoldKey,
       backgroundColor: const Color(0xFFF5F7FB),
 
-      // SIDEBAR (DRAWER) - BERSIH DARI MENU PROFILE, HANYA BERANDA & RIWAYAT
+      // SIDEBAR (DRAWER)
       drawer: Drawer(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const DrawerHeader(
-              decoration: BoxDecoration(
-                color: Color(0xFF007BFF),
-              ),
+              decoration: BoxDecoration(color: Color(0xFF007BFF)),
               child: Align(
                 alignment: Alignment.bottomLeft,
-                child: Text(
-                  'Menu Navigasi',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                child: Text('Menu Navigasi',
+                    style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
               ),
             ),
             ListTile(
               leading: const Icon(Icons.home, color: Color(0xFF007BFF)),
               title: const Text('Beranda'),
               onTap: () {
-                Navigator.pop(context); // Tutup sidebar
+                Navigator.pop(context);
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => const AbsensiPage()),
@@ -93,9 +149,7 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
             ListTile(
               leading: const Icon(Icons.history, color: Color(0xFF007BFF)),
               title: const Text('Riwayat Absensi'),
-              onTap: () {
-                Navigator.pop(context); // Cukup tutup sidebar karena sudah di halaman riwayat
-              },
+              onTap: () => Navigator.pop(context),
             ),
           ],
         ),
@@ -104,73 +158,37 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // HEADER DENGAN MENU DI KIRI DAN LOGO PROFILE DI KANAN
+            // HEADER
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
               color: const Color(0xFF007BFF),
               child: Row(
                 children: [
-                  // 1. Tombol Garis Tiga (Kiri)
                   IconButton(
                     icon: const Icon(Icons.menu, color: Colors.white, size: 24),
-                    onPressed: () {
-                      _scaffoldKey.currentState?.openDrawer(); // Membuka sidebar
-                    },
+                    onPressed: () => _scaffoldKey.currentState?.openDrawer(),
                   ),
-
-                  // 2. Judul Header (Tengah)
                   const Expanded(
-                    child: Text(
-                      'Riwayat Absensi',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    child: Text('Riwayat Absensi',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                   ),
-
-                  // 3. Logo Profile dengan Dropdown List (Kanan)
                   PopupMenuButton<String>(
                     onSelected: (value) {
                       if (value == 'profile') {
-                        // Membuka halaman mhs_profile.dart menggunakan push biasa
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const ProfilePage()),
-                        );
-                      } else if (value == 'logout') {
-                        print('Aksi Log Out dipicu dari halaman riwayat');
-                        // Tambahkan fungsi logout Anda di sini
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfilePage()));
                       }
                     },
-                    icon: const Icon(
-                      Icons.account_circle, // Ikon avatar/profile
-                      color: Colors.white,
-                      size: 28,
-                    ),
+                    icon: const Icon(Icons.account_circle, color: Colors.white, size: 28),
                     itemBuilder: (BuildContext context) => [
                       const PopupMenuItem<String>(
                         value: 'profile',
-                        child: Row(
-                          children: [
-                            Icon(Icons.person, color: Colors.black87, size: 20),
-                            SizedBox(width: 10),
-                            Text('Profile'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem<String>(
-                        value: 'logout',
-                        child: Row(
-                          children: [
-                            Icon(Icons.logout, color: Colors.red, size: 20),
-                            SizedBox(width: 10),
-                            Text('Log Out', style: TextStyle(color: Colors.red)),
-                          ],
-                        ),
+                        child: Row(children: [
+                          Icon(Icons.person, color: Colors.black87, size: 20),
+                          SizedBox(width: 10),
+                          Text('Profile'),
+                        ]),
                       ),
                     ],
                   ),
@@ -180,44 +198,60 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
 
             // CONTAINER UTAMA
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(15),
-                children: [
-                  // RINGKASAN CARD (.summary)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(15),
-                    margin: const EdgeInsets.only(bottom: 15),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE0F0FF),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      children: const [
-                        Text(
-                          '12',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _errorMessage != null
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(_errorMessage!, textAlign: TextAlign.center),
+                                const SizedBox(height: 12),
+                                ElevatedButton(onPressed: _loadRiwayat, child: const Text('Coba Lagi')),
+                              ],
+                            ),
                           ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Total Kehadiran Bulan Ini',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                        )
+                      : RefreshIndicator(
+                          onRefresh: _loadRiwayat,
+                          child: ListView(
+                            padding: const EdgeInsets.all(15),
+                            children: [
+                              // RINGKASAN CARD
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(15),
+                                margin: const EdgeInsets.only(bottom: 15),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE0F0FF),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Text('$_totalHadirBulanIni',
+                                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 4),
+                                    const Text('Total Kehadiran Bulan Ini',
+                                        style: TextStyle(fontSize: 14, color: Colors.black87)),
+                                  ],
+                                ),
+                              ),
 
-                  // DAFTAR RIWAYAT
-                  ..._riwayatList.map((item) => _buildCardRiwayat(item)),
-                ],
-              ),
+                              if (_riwayatList.isEmpty)
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 40),
+                                  child: Center(
+                                    child:
+                                        Text('Belum ada riwayat absensi.', style: TextStyle(color: Colors.grey)),
+                                  ),
+                                )
+                              else
+                                ..._riwayatList.map((item) => _buildCardRiwayat(item)),
+                            ],
+                          ),
+                        ),
             ),
           ],
         ),
@@ -225,33 +259,21 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
     );
   }
 
-  Widget _buildCardRiwayat(AbsensiItem item) {
+  Widget _buildCardRiwayat(AbsensiModel item) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6, offset: const Offset(0, 2))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            item.matkul,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-          ),
+          Text(item.jadwal.namaMatkul, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
           const SizedBox(height: 5),
-          Text(
-            item.tanggal,
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
-          ),
+          Text(item.tanggal, style: const TextStyle(fontSize: 12, color: Colors.grey)),
           const SizedBox(height: 10),
           _buildStatusBadge(item.status),
         ],
@@ -259,24 +281,20 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
     );
   }
 
-  Widget _buildStatusBadge(RiwayatStatusType type) {
-    String text;
+  Widget _buildStatusBadge(AbsensiStatus type) {
     Color backgroundColor;
     Color textColor;
 
     switch (type) {
-      case RiwayatStatusType.hadir:
-        text = 'Hadir';
+      case AbsensiStatus.hadir:
         backgroundColor = const Color(0xFFE6FFED);
         textColor = const Color(0xFF1A7F37);
         break;
-      case RiwayatStatusType.terlambat:
-        text = 'Terlambat';
+      case AbsensiStatus.izin:
         backgroundColor = const Color(0xFFFFF4E5);
         textColor = const Color(0xFFB26A00);
         break;
-      case RiwayatStatusType.tidakHadir:
-        text = 'Tidak Hadir';
+      case AbsensiStatus.alpha:
         backgroundColor = const Color(0xFFFFE5E5);
         textColor = const Color(0xFFC62828);
         break;
@@ -284,18 +302,9 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: textColor,
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
-        ),
-      ),
+      decoration: BoxDecoration(color: backgroundColor, borderRadius: BorderRadius.circular(8)),
+      child: Text(absensiStatusLabel(type),
+          style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 12)),
     );
   }
 }

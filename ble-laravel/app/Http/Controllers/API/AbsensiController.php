@@ -26,9 +26,7 @@ class AbsensiController extends Controller
         $hariIni   = $this->getHariIndonesia($now->dayOfWeek);
 
         $jadwal = Jadwal::with(['mataKuliah', 'ruangan', 'dosen'])
-            ->whereHas('mahasiswas', function ($q) use ($mahasiswa) {
-                $q->where('nim', $mahasiswa->nim);
-            })
+            ->where('kelas', $mahasiswa->kelas)
             ->where('hari', $hariIni)
             ->where('id_ruangan', $request->id_ruangan)
             ->whereTime('jam_mulai', '<=', $now->format('H:i:s'))

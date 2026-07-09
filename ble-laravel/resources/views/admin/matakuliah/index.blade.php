@@ -18,7 +18,8 @@
             <input type="text" name="search" placeholder="Cari Nama Mata Kuliah..."
                    value="{{ request('search') }}">
             <button type="submit" class="btn btn-outline" style="padding:8px 20px">Cari</button>
-            <a href="{{ route('admin.matakuliah.index') }}" class="btn btn-outline" style="padding:8px 16px">Reset</a>
+            <a href="{{ route('admin.matakuliah.index') }}" class="btn btn-outline"
+               style="padding:8px 16px">Reset</a>
         </div>
     </form>
 
@@ -30,6 +31,7 @@
                     <th>Nama Mata Kuliah</th>
                     <th>SKS</th>
                     <th>Semester</th>
+                    <th>Ruangan</th>
                     <th>Aksi</th>
                 </tr>
             </thead>
@@ -37,9 +39,32 @@
                 @forelse($matakuliahs as $mk)
                 <tr>
                     <td>{{ $loop->iteration + ($matakuliahs->currentPage() - 1) * $matakuliahs->perPage() }}</td>
-                    <td>{{ $mk->nama_matkul }}</td>
-                    <td>{{ $mk->sks }}</td>
+                    <td style="font-weight:500">{{ $mk->nama_matkul }}</td>
+                    <td>{{ $mk->sks }} SKS</td>
                     <td>Semester {{ $mk->semester }}</td>
+
+                    {{-- Kolom Ruangan --}}
+                    <td>
+                        @if($mk->ruangans->isEmpty())
+                            <span style="font-size:12px;color:#9CA3AF">—</span>
+                        @else
+                            <div style="display:flex;flex-wrap:wrap;gap:4px">
+                                @foreach($mk->ruangans as $r)
+                                    <span style="
+                                        display:inline-block;
+                                        font-size:11px;
+                                        padding:3px 8px;
+                                        background:#EFF6FF;
+                                        color:#1D4ED8;
+                                        border-radius:5px;
+                                        font-weight:500;
+                                        border:1px solid #BFDBFE;
+                                    ">{{ $r->id_ruangan }}</span>
+                                @endforeach
+                            </div>
+                        @endif
+                    </td>
+
                     <td style="display:flex;gap:6px;align-items:center">
                         <a href="{{ route('admin.matakuliah.edit', $mk->id_matkul) }}"
                            class="btn btn-primary btn-sm">Edit</a>
@@ -53,7 +78,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="5" style="text-align:center;padding:32px;color:#9CA3AF">
+                    <td colspan="6" style="text-align:center;padding:32px;color:#9CA3AF">
                         Belum ada data mata kuliah.
                     </td>
                 </tr>

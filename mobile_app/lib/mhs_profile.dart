@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'main.dart';
 import 'mhs_dashboard.dart';
 import 'mhs_riwayat.dart';
 
@@ -10,78 +12,143 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  // GlobalKey tetap dipertahankan jika sewaktu-waktu Sidebar ingin dibuka lewat gestur geser (swipe)
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // FUNGSI UNTUK MENAMPILKAN MODAL GANTI PASSWORD
+  Map<String, dynamic>? _user;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    // Coba refresh dari server, fallback ke cache lokal jika gagal
+    final fresh = await AuthService.me();
+    final cached = await StorageService.getUser();
+
+    setState(() {
+      _user = fresh ?? cached;
+      _isLoading = false;
+    });
+  }
+
+  // FUNGSI UNTUK MENAMPILKAN MODAL GANTI PASSWORD (terhubung ke API)
   void _openChangePasswordModal() {
+    final lamaCtrl = TextEditingController();
+    final baruCtrl = TextEditingController();
+    final confirmCtrl = TextEditingController();
+    bool isSubmitting = false;
+    String? errorMsg;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-          ),
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(15),
-              ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            Future<void> submit() async {
+              if (baruCtrl.text.length < 6) {
+                setModalState(() => errorMsg = 'Password baru minimal 6 karakter.');
+                return;
+              }
+              if (baruCtrl.text != confirmCtrl.text) {
+                setModalState(() => errorMsg = 'Konfirmasi password tidak cocok.');
+                return;
+              }
+
+              setModalState(() {
+                isSubmitting = true;
+                errorMsg = null;
+              });
+
+              final result = await AuthService.changePassword(
+                passwordLama: lamaCtrl.text,
+                passwordBaru: baruCtrl.text,
+                passwordBaruConfirm: confirmCtrl.text,
+              );
+
+              if (!context.mounted) return;
+
+              if (result.success) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(const SnackBar(content: Text('Password berhasil diubah!')));
+              } else {
+                setModalState(() {
+                  isSubmitting = false;
+                  errorMsg = result.message;
+                });
+              }
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
-                      'Ganti Password',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Ganti Password',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: const Text('✖', style: TextStyle(fontSize: 18, color: Colors.grey)),
+                        ),
+                      ],
                     ),
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: const Text(
-                        '✖',
-                        style: TextStyle(fontSize: 18, color: Colors.grey),
+                    const SizedBox(height: 20),
+                    if (errorMsg != null) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(10),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFE5E5),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(errorMsg!, style: const TextStyle(color: Color(0xFFC62828), fontSize: 13)),
                       ),
+                    ],
+                    _buildTextField(controller: lamaCtrl, hint: 'Password lama'),
+                    const SizedBox(height: 10),
+                    _buildTextField(controller: baruCtrl, hint: 'Password baru'),
+                    const SizedBox(height: 10),
+                    _buildTextField(controller: confirmCtrl, hint: 'Konfirmasi password'),
+                    const SizedBox(height: 15),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF007BFF),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        elevation: 0,
+                      ),
+                      onPressed: isSubmitting ? null : submit,
+                      child: isSubmitting
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            )
+                          : const Text('Simpan', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                     ),
+                    const SizedBox(height: 10),
                   ],
                 ),
-                const SizedBox(height: 20),
-                _buildTextField(hint: 'Password lama'),
-                const SizedBox(height: 10),
-                _buildTextField(hint: 'Password baru'),
-                const SizedBox(height: 10),
-                _buildTextField(hint: 'Konfirmasi password'),
-                const SizedBox(height: 15),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF007BFF),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    elevation: 0,
-                  ),
-                  onPressed: () {
-                    print('Password berhasil diubah!');
-                    Navigator.pop(context);
-                  },
-                  child: const Text(
-                    'Simpan',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                const SizedBox(height: 10),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -89,41 +156,35 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final nama = _user?['nama'] ?? '-';
+    final kelas = _user?['kelas'] ?? '-';
+    final nim = _user?['nim'] ?? _user?['nidn'] ?? '-';
+
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: const Color(0xFFF5F7FB),
 
-      // SIDEBAR (DRAWER) - DISESUAIKAN AGAR MENGGUNAKAN POP JIKA INGIN KEMBALI
+      // SIDEBAR (DRAWER)
       drawer: Drawer(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const DrawerHeader(
-              decoration: BoxDecoration(
-                color: Color(0xFF007BFF),
-              ),
+              decoration: BoxDecoration(color: Color(0xFF007BFF)),
               child: Align(
                 alignment: Alignment.bottomLeft,
-                child: Text(
-                  'Menuu Navigasi',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                child: Text('Menu Navigasi',
+                    style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
               ),
             ),
             ListTile(
               leading: const Icon(Icons.home, color: Color(0xFF007BFF)),
               title: const Text('Beranda'),
               onTap: () {
-                Navigator.pop(context); // Tutup drawer
-                // Menghapus stack lama dan langsung mengarahkan ke dashboard utama
+                Navigator.pop(context);
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(builder: (context) => const AbsensiPage()),
-                      (route) => false,
+                  (route) => false,
                 );
               },
             ),
@@ -131,7 +192,7 @@ class _ProfilePageState extends State<ProfilePage> {
               leading: const Icon(Icons.history, color: Color(0xFF007BFF)),
               title: const Text('Riwayat Absensi'),
               onTap: () {
-                Navigator.pop(context); // Tutup drawer
+                Navigator.pop(context);
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => const RiwayatAbsensiPage()),
@@ -141,79 +202,65 @@ class _ProfilePageState extends State<ProfilePage> {
             ListTile(
               leading: const Icon(Icons.person, color: Color(0xFF007BFF)),
               title: const Text('Profile'),
-              onTap: () {
-                Navigator.pop(context); // Sudah di halaman profile, cukup tutup drawer
-              },
+              onTap: () => Navigator.pop(context),
             ),
           ],
         ),
       ),
 
+      backgroundColor: const Color(0xFFF5F7FB),
       body: SafeArea(
         child: Column(
           children: [
-            // HEADER DENGAN TOMBOL KEMBALI (KUSTOM) DI SEBELAH KIRI
+            // HEADER DENGAN TOMBOL KEMBALI
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
               color: const Color(0xFF007BFF),
               child: Row(
                 children: [
-                  // Tombol Kembali dinamis (Otomatis mendeteksi halaman asal pembuka)
                   IconButton(
                     icon: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
-                    onPressed: () {
-                      Navigator.pop(context); // Mundur ke halaman asal (Dashboard atau Riwayat)
-                    },
+                    onPressed: () => Navigator.pop(context),
                   ),
                   const Expanded(
-                    child: Text(
-                      'Profile',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    child: Text('Profile',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                   ),
-                  const SizedBox(width: 48), // Penyeimbang posisi teks agar pas di tengah
+                  const SizedBox(width: 48),
                 ],
               ),
             ),
 
             // CONTAINER UTAMA
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(15),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildProfileCard(label: 'Nama', value: 'Sardo'),
-                    _buildProfileCard(label: 'Kelas', value: 'IF4C Pagi'),
-                    const SizedBox(height: 10),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF007BFF),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        elevation: 0,
-                      ),
-                      onPressed: _openChangePasswordModal,
-                      child: const Text(
-                        'Ganti Password',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                        ),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.all(15),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildProfileCard(label: 'NIM', value: nim.toString()),
+                          _buildProfileCard(label: 'Nama', value: nama.toString()),
+                          _buildProfileCard(label: 'Kelas', value: kelas.toString()),
+                          const SizedBox(height: 10),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF007BFF),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              elevation: 0,
+                            ),
+                            onPressed: _openChangePasswordModal,
+                            child: const Text('Ganti Password',
+                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              ),
             ),
           ],
         ),
@@ -228,13 +275,7 @@ class _ProfilePageState extends State<ProfilePage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6, offset: const Offset(0, 2))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -247,8 +288,9 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildTextField({required String hint}) {
+  Widget _buildTextField({required TextEditingController controller, required String hint}) {
     return TextField(
+      controller: controller,
       obscureText: true,
       decoration: InputDecoration(
         hintText: hint,
