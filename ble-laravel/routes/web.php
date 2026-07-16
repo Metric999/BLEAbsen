@@ -40,6 +40,10 @@ Route::middleware(['auth:dosen'])->prefix('dosen')->name('dosen.')->group(functi
 
     // Dosen ubah status absensi mahasiswa (form POST)
     Route::post('/absensi/{id_absensi}/ubah', [DosenRekapController::class, 'ubahStatus'])->name('absensi.ubah');
+
+    // Profile & Ganti Password
+    Route::get('/profile',                    [DosenRekapController::class, 'profile'])->name('profile');
+    Route::post('/profile/password',          [DosenRekapController::class, 'updatePassword'])->name('profile.password');
 });
 
 Route::redirect('/', '/login');

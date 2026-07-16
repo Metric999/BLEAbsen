@@ -23,18 +23,37 @@
         justify-content: space-between;
     }
     .header-title { font-size: 16px; font-weight: bold; }
-    .header-user  { font-size: 12px; opacity: .85; }
-    .btn-logout {
-        background: rgba(255,255,255,.15);
-        border: 1px solid rgba(255,255,255,.3);
-        color: #fff;
-        padding: 6px 12px;
-        border-radius: 7px;
-        font-size: 12px;
-        cursor: pointer;
-        text-decoration: none;
+    .header-user  { font-size: 12px; opacity: .85; cursor: pointer; }
+    
+    /* ── Dropdown ── */
+    .dropdown { position: relative; display: inline-block; }
+    .dropdown-content {
+        display: none;
+        position: absolute;
+        right: 0;
+        background-color: white;
+        min-width: 150px;
+        box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+        z-index: 1;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-top: 10px;
     }
-    .btn-logout:hover { background: rgba(255,255,255,.25); }
+    .dropdown-content.show { display: block; }
+    .dropdown-content a, .dropdown-content button {
+        color: #333;
+        padding: 12px 16px;
+        text-decoration: none;
+        display: block;
+        font-size: 13px;
+        width: 100%;
+        text-align: left;
+        border: none;
+        background: none;
+        cursor: pointer;
+    }
+    .dropdown-content a:hover, .dropdown-content button:hover { background-color: #f1f1f1; }
+    .dropdown-content .text-danger { color: #dc3545; }
 
     /* ── Alert ── */
     .alert {
@@ -207,11 +226,39 @@
         <div class="header-title">Live Monitoring Absensi</div>
         <div class="header-user">{{ $dosen->nama }}</div>
     </div>
-    <form method="POST" action="{{ route('logout') }}" style="margin:0">
-        @csrf
-        <button type="submit" class="btn-logout">Keluar</button>
-    </form>
+    
+    <div class="dropdown">
+        <div onclick="toggleDropdown()" style="cursor: pointer; background: rgba(255,255,255,0.2); padding: 8px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-user"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        </div>
+        <div id="userDropdown" class="dropdown-content">
+            <a href="{{ route('dosen.profile') }}">Profile</a>
+            <form method="POST" action="{{ route('logout') }}" style="margin:0">
+                @csrf
+                <button type="submit" class="text-danger">Log Out</button>
+            </form>
+        </div>
+    </div>
 </div>
+
+<script>
+    function toggleDropdown() {
+        document.getElementById("userDropdown").classList.toggle("show");
+    }
+    
+    // Close the dropdown if the user clicks outside of it
+    window.onclick = function(event) {
+        if (!event.target.closest('.dropdown')) {
+            var dropdowns = document.getElementsByClassName("dropdown-content");
+            for (var i = 0; i < dropdowns.length; i++) {
+                var openDropdown = dropdowns[i];
+                if (openDropdown.classList.contains('show')) {
+                    openDropdown.classList.remove('show');
+                }
+            }
+        }
+    }
+</script>
 
 {{-- ── ALERT ── --}}
 @if(session('success'))

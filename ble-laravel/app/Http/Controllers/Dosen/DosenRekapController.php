@@ -112,4 +112,39 @@ class DosenRekapController extends Controller
             ->route('dosen.rekap', ['jadwal_id' => $jadwal->id_jadwal])
             ->with('success', 'Status absensi berhasil diperbarui.');
     }
+
+    /**
+     * Tampilkan halaman profile dosen
+     */
+    public function profile()
+    {
+        $dosen = Auth::guard('dosen')->user();
+        return view('dosen.profile', compact('dosen'));
+    }
+
+    /**
+     * Update password dosen
+     */
+    public function updatePassword(Request $request)
+    {
+        $request->validate([
+            'password_lama' => 'required',
+            'password_baru' => 'required|min:6|confirmed',
+        ], [
+            'password_baru.confirmed' => 'Konfirmasi password tidak cocok.',
+            'password_baru.min' => 'Password baru minimal 6 karakter.',
+        ]);
+
+        $dosen = Auth::guard('dosen')->user();
+
+        if (!\Hash::check($request->password_lama, $dosen->password)) {
+            return back()->withErrors(['password_lama' => 'Password lama tidak sesuai.']);
+        }
+
+        $dosen->password = \Hash::make($request->password_baru);
+        // Save using Eloquent instance
+        $dosen->save();
+
+        return back()->with('success', 'Password berhasil diubah.');
+    }
 }
