@@ -25,6 +25,7 @@ Route::middleware(['auth:web'])->prefix('admin')->name('admin.')->group(function
     Route::resource('dosen',   DosenController::class);
     Route::resource('jadwal',  JadwalController::class);
     Route::resource('ruangan', RuanganController::class);
+    Route::post('ruangan/ajax-store', [RuanganController::class, 'ajaxStore'])->name('ruangan.ajax-store');
     Route::resource('matakuliah', MataKuliahController::class);
 });
 

@@ -33,10 +33,19 @@
             </div>
 
             <div class="form-group">
-                <label>Waktu <span class="req">*</span></label>
-                <input type="text" name="waktu" placeholder="08.00-10.00"
-                       value="{{ old('waktu', substr($jadwal->jam_mulai,0,5).'-'.substr($jadwal->jam_selesai,0,5)) }}"
+                <label>Jam Mulai <span class="req">*</span></label>
+                <input type="time" name="jam_mulai"
+                       value="{{ old('jam_mulai', substr($jadwal->jam_mulai, 0, 5)) }}"
                        required>
+                @error('jam_mulai')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
+
+            <div class="form-group">
+                <label>Jam Selesai <span class="req">*</span></label>
+                <input type="time" name="jam_selesai"
+                       value="{{ old('jam_selesai', substr($jadwal->jam_selesai, 0, 5)) }}"
+                       required>
+                @error('jam_selesai')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
 
             <div class="form-group">

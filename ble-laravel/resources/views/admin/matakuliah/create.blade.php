@@ -68,6 +68,63 @@
     border-radius: 9px;
     margin-bottom: 8px;
 }
+
+/* ── Modal Ruangan Baru ── */
+.modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.45);
+    z-index: 999;
+    align-items: center;
+    justify-content: center;
+}
+.modal-overlay.active { display: flex; }
+.modal-box {
+    background: #fff;
+    border-radius: 14px;
+    padding: 28px 32px;
+    width: 100%;
+    max-width: 480px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.2);
+    animation: modalIn .2s ease;
+}
+@keyframes modalIn { from { opacity: 0; transform: scale(.95); } to { opacity: 1; transform: scale(1); } }
+.modal-title {
+    font-size: 16px; font-weight: 700; color: #111827; margin-bottom: 20px;
+    padding-bottom: 12px; border-bottom: 1px solid #E5E7EB;
+}
+.modal-field { margin-bottom: 14px; }
+.modal-field label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 5px; }
+.modal-field input {
+    width: 100%; padding: 9px 12px;
+    border: 1.5px solid #D1D5DB; border-radius: 8px;
+    font-size: 13.5px; color: #111827; outline: none; box-sizing: border-box;
+}
+.modal-field input:focus { border-color: #1B5FE0; box-shadow: 0 0 0 3px rgba(27,95,224,.1); }
+.modal-field small { display: block; font-size: 11.5px; color: #6B7280; margin-top: 3px; }
+.modal-error { font-size: 12px; color: #DC2626; margin-top: 4px; display: none; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.btn-modal-cancel {
+    padding: 9px 18px; background: #F3F4F6; color: #374151;
+    border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer;
+}
+.btn-modal-submit {
+    padding: 9px 18px; background: #1B5FE0; color: #fff;
+    border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer;
+    transition: background .15s;
+}
+.btn-modal-submit:hover { background: #1749b1; }
+.btn-modal-submit:disabled { opacity: .6; cursor: not-allowed; }
+.btn-new-room {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 6px 13px;
+    background: #EFF6FF; color: #1B5FE0;
+    border: 1.5px solid #BFDBFE;
+    border-radius: 8px; font-size: 12.5px;
+    font-weight: 500; cursor: pointer;
+    transition: all .15s;
+}
+.btn-new-room:hover { background: #DBEAFE; border-color: #1B5FE0; }
 </style>
 @endpush
 
@@ -120,10 +177,19 @@
                         (pilih satu atau lebih ruangan untuk mata kuliah ini)
                     </span>
                 </div>
-                {{-- Counter ruangan terpilih --}}
-                <span id="roomCounter" style="font-size:12px; color:#6B7280; display:none">
-                    <span id="roomCount">0</span> ruangan dipilih
-                </span>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    {{-- Counter ruangan terpilih --}}
+                    <span id="roomCounter" style="font-size:12px; color:#6B7280; display:none">
+                        <span id="roomCount">0</span> ruangan dipilih
+                    </span>
+                    {{-- Tombol buat ruangan baru --}}
+                    <button type="button" class="btn-new-room" onclick="openRoomModal()">
+                        <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        Ruangan Baru
+                    </button>
+                </div>
             </div>
 
             @error('ruangans')
@@ -167,8 +233,51 @@
     </form>
 </div>
 
+{{-- ── MODAL BUAT RUANGAN BARU ── --}}
+<div class="modal-overlay" id="modalRuangan">
+    <div class="modal-box">
+        <div class="modal-title">🏛️ Tambah Ruangan Baru</div>
+
+        <div class="modal-field">
+            <label>ID Ruangan <span style="color:#EF4444">*</span></label>
+            <input type="text" id="m_id_ruangan" placeholder="cth: GU-805" style="text-transform:uppercase">
+            <small>Format: Gedung-Nomor, contoh: GU-805, TA-11A</small>
+            <div class="modal-error" id="err_id_ruangan"></div>
+        </div>
+
+        <div class="modal-field">
+            <label>Nama Ruangan <span style="color:#EF4444">*</span></label>
+            <input type="text" id="m_nama_ruangan" placeholder="cth: Gedung Utama Lantai 8 Ruang 5">
+            <div class="modal-error" id="err_nama_ruangan"></div>
+        </div>
+
+        <div class="modal-field">
+            <label>Beacon Name</label>
+            <input type="text" id="m_beacon_name" placeholder="cth: BLE-GU805">
+            <small>Nama broadcast ESP32. Kosongkan jika belum ada beacon.</small>
+        </div>
+
+        <div class="modal-field">
+            <label>Beacon UUID <span style="color:#EF4444">*</span></label>
+            <input type="text" id="m_beacon_uuid" placeholder="cth: 4fafc201-1fb5-459e-8fcc-c5c9c331914b">
+            <small>Generate UUID di <a href="https://www.uuidgenerator.net/" target="_blank" style="color:#1B5FE0">uuidgenerator.net</a></small>
+            <div class="modal-error" id="err_beacon_uuid"></div>
+        </div>
+
+        <div id="modalGlobalError" style="display:none; padding:10px 14px; background:#FEF2F2; border-radius:8px; font-size:13px; color:#DC2626; margin-top:8px;"></div>
+
+        <div class="modal-actions">
+            <button type="button" class="btn-modal-cancel" onclick="closeRoomModal()">Batal</button>
+            <button type="button" class="btn-modal-submit" id="btnModalSubmit" onclick="submitRoomModal()">Simpan Ruangan</button>
+        </div>
+    </div>
+</div>
+
 {{-- Data ruangan untuk JS (semua opsi yang tersedia) --}}
 <script>
+const AJAX_STORE_URL  = '{{ route('admin.ruangan.ajax-store') }}';
+const CSRF_TOKEN      = '{{ csrf_token() }}';
+
 const AVAILABLE_ROOMS = @json($ruangans->map(fn($r) => [
     'id'   => $r->id_ruangan,
     'nama' => $r->nama_ruangan,
@@ -315,10 +424,14 @@ function updateUI() {
         countEl.textContent    = rows.length;
     }
 
-    // Nonaktifkan tombol jika semua ruangan sudah dipilih
-    const usedCount = getSelectedIds().length;
+    // Nonaktifkan tombol HANYA jika semua ruangan yang tersedia sudah dipilih di semua baris
+    // (setiap baris sudah punya nilai, dan jumlah baris == jumlah ruangan tersedia)
     if (btnAdd) {
-        btnAdd.disabled = (usedCount >= AVAILABLE_ROOMS.length);
+        const allSelected = [...rows].every(row => {
+            const sel = row.querySelector('select');
+            return sel && sel.value !== '';
+        });
+        btnAdd.disabled = (rows.length >= AVAILABLE_ROOMS.length && allSelected);
     }
 }
 
@@ -343,5 +456,91 @@ window.addEventListener('DOMContentLoaded', () => {
         updateUI();
     }
 });
+
+// ── Modal Ruangan Baru ──────────────────────────────────────────────
+function openRoomModal() {
+    // Reset form
+    ['m_id_ruangan','m_nama_ruangan','m_beacon_name','m_beacon_uuid'].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+    ['err_id_ruangan','err_nama_ruangan','err_beacon_uuid','modalGlobalError'].forEach(id => {
+        const el = document.getElementById(id);
+        el.style.display = 'none';
+        el.textContent = '';
+    });
+    document.getElementById('btnModalSubmit').disabled = false;
+    document.getElementById('modalRuangan').classList.add('active');
+}
+
+function closeRoomModal() {
+    document.getElementById('modalRuangan').classList.remove('active');
+}
+
+// Tutup modal saat klik overlay di luar box
+document.getElementById('modalRuangan').addEventListener('click', function(e) {
+    if (e.target === this) closeRoomModal();
+});
+
+async function submitRoomModal() {
+    // Reset error tampilan
+    ['err_id_ruangan','err_nama_ruangan','err_beacon_uuid','modalGlobalError'].forEach(id => {
+        const el = document.getElementById(id);
+        el.style.display = 'none';
+        el.textContent = '';
+    });
+
+    const id_ruangan   = document.getElementById('m_id_ruangan').value.trim().toUpperCase();
+    const nama_ruangan = document.getElementById('m_nama_ruangan').value.trim();
+    const beacon_name  = document.getElementById('m_beacon_name').value.trim();
+    const beacon_uuid  = document.getElementById('m_beacon_uuid').value.trim();
+
+    const btn = document.getElementById('btnModalSubmit');
+    btn.disabled = true;
+    btn.textContent = 'Menyimpan...';
+
+    try {
+        const resp = await fetch(AJAX_STORE_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': CSRF_TOKEN,
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({ id_ruangan, nama_ruangan, beacon_name, beacon_uuid }),
+        });
+
+        const data = await resp.json();
+
+        if (!resp.ok) {
+            // Tampilkan error validasi per field
+            if (data.errors) {
+                for (const [field, messages] of Object.entries(data.errors)) {
+                    const el = document.getElementById('err_' + field);
+                    if (el) { el.textContent = messages[0]; el.style.display = 'block'; }
+                }
+            } else {
+                const globalEl = document.getElementById('modalGlobalError');
+                globalEl.textContent = data.message || 'Terjadi kesalahan.';
+                globalEl.style.display = 'block';
+            }
+            btn.disabled = false;
+            btn.textContent = 'Simpan Ruangan';
+            return;
+        }
+
+        // Berhasil: tambahkan ruangan baru ke daftar AVAILABLE_ROOMS & buka dropdown
+        const newRoom = data.ruangan;
+        AVAILABLE_ROOMS.push({ id: newRoom.id, nama: newRoom.nama });
+        closeRoomModal();
+        addRoomRow(newRoom.id); // Langsung tambahkan baris dengan ruangan yang baru dibuat
+
+    } catch (err) {
+        const globalEl = document.getElementById('modalGlobalError');
+        globalEl.textContent = 'Gagal menghubungi server. Coba lagi.';
+        globalEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Simpan Ruangan';
+    }
+}
 </script>
 @endsection

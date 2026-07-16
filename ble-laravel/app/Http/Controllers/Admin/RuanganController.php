@@ -43,6 +43,32 @@ class RuanganController extends Controller
             ->with('success', 'Ruangan berhasil ditambahkan.');
     }
 
+    /**
+     * Simpan ruangan baru via AJAX (dari modal di halaman lain, mis. form Mata Kuliah).
+     */
+    public function ajaxStore(Request $request)
+    {
+        $validated = $request->validate([
+            'id_ruangan'   => 'required|string|max:20|unique:ruangans,id_ruangan',
+            'nama_ruangan' => 'required|string|max:100',
+            'beacon_uuid'  => 'required|string|max:100|unique:ruangans,beacon_uuid',
+            'beacon_name'  => 'nullable|string|max:50',
+        ], [
+            'id_ruangan.unique'  => 'ID ruangan sudah digunakan.',
+            'beacon_uuid.unique' => 'UUID beacon sudah digunakan oleh ruangan lain.',
+        ]);
+
+        $ruangan = Ruangan::create($validated);
+
+        return response()->json([
+            'success'  => true,
+            'ruangan'  => [
+                'id'   => $ruangan->id_ruangan,
+                'nama' => $ruangan->nama_ruangan,
+            ],
+        ]);
+    }
+
     public function edit(Ruangan $ruangan)
     {
         return view('admin.ruangan.edit', compact('ruangan'));

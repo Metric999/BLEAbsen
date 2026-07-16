@@ -111,21 +111,22 @@ class JadwalController extends Controller
     public function update(Request $request, Jadwal $jadwal)
     {
         $validated = $request->validate([
-            'kelas'      => 'required|string|max:20',
-            'hari'       => 'required|in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu',
-            'waktu'      => ['required','string','regex:/^\d{2}\.\d{2}-\d{2}\.\d{2}$/'],
-            'id_matkul'  => 'required|exists:mata_kuliahs,id_matkul',
-            'id_ruangan' => 'required|exists:ruangans,id_ruangan',
-            'nidn'       => 'required|exists:dosens,nidn',
-        ], ['waktu.regex' => 'Format waktu harus: 08.00-10.00']);
-
-        [$jamMulai, $jamSelesai] = $this->parseWaktu($validated['waktu']);
+            'kelas'       => 'required|string|max:20',
+            'hari'        => 'required|in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu',
+            'jam_mulai'   => 'required|date_format:H:i',
+            'jam_selesai' => 'required|date_format:H:i|after:jam_mulai',
+            'id_matkul'   => 'required|exists:mata_kuliahs,id_matkul',
+            'id_ruangan'  => 'required|exists:ruangans,id_ruangan',
+            'nidn'        => 'required|exists:dosens,nidn',
+        ], [
+            'jam_selesai.after' => 'Jam selesai harus lebih akhir dari jam mulai.',
+        ]);
 
         $jadwal->update([
             'kelas'       => $validated['kelas'],
             'hari'        => $validated['hari'],
-            'jam_mulai'   => $jamMulai,
-            'jam_selesai' => $jamSelesai,
+            'jam_mulai'   => $validated['jam_mulai'] . ':00',
+            'jam_selesai' => $validated['jam_selesai'] . ':00',
             'id_matkul'   => $validated['id_matkul'],
             'id_ruangan'  => $validated['id_ruangan'],
             'nidn'        => $validated['nidn'],
