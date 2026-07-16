@@ -104,7 +104,7 @@ class ApiClient {
   ///  - Emulator Android         -> http://10.0.2.2:8000/api
   ///  - Device fisik (WiFi sama) -> http://<IP-LAPTOP>:8000/api
   ///  - iOS Simulator            -> http://localhost:8000/api
-  static const String baseUrl = 'http://10.177.99.39:8000/api';
+  static const String baseUrl = 'http://10.20.149.246:8000/api';
 
   static Dio? _dio;
 
@@ -207,8 +207,8 @@ class BleScanResultData {
 /// karena nama lokal BLE tidak mendukung karakter "-" di semua perangkat).
 class BleService {
   // UUID harus sama persis dengan di kode ESP32
-  static const String serviceUuid        = 'ca3cbe46-f0e0-44e6-88df-c4a74c1cd239';
-  static const String characteristicUuid = '91c1a7d2-5ed8-438c-8a21-2671176cc3ca';
+  static const String serviceUuid        = 'ea223d75-7211-4992-8bd2-97e16abfee3a';
+  static const String characteristicUuid = '265ffb30-adde-401b-be5a-f667ee5c38a4';
 
   static Future<bool> requestPermissions() async {
     final statuses = await [
@@ -398,6 +398,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
   String? _errorMessage;
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -559,11 +560,22 @@ class _LoginPageState extends State<LoginPage> {
                       padding: const EdgeInsets.only(bottom: 12),
                       child: TextField(
                         controller: _passwordController,
-                        obscureText: true,
+                        obscureText: _obscurePassword,
                         decoration: InputDecoration(
                           hintText: 'Masukkan password',
                           hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
                           contentPadding: const EdgeInsets.all(12),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                              color: Colors.grey,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                             borderSide: const BorderSide(color: Color(0xFFDDDDDD)),
