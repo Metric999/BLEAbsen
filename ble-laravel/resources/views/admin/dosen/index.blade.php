@@ -26,7 +26,7 @@
         <table>
             <thead>
                 <tr>
-                    <th>NIDN</th>
+                    <th>NIDN/NIK</th>
                     <th>Nama</th>
                     <th>Username</th>
                     <th>Aksi</th>

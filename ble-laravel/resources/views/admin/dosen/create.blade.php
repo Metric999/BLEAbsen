@@ -10,7 +10,7 @@
         <div class="form-grid">
 
             <div class="form-group">
-                <label>NIDN <span class="req">*</span></label>
+                <label>NIDN/NIK <span class="req">*</span></label>
                 <input type="text" name="nidn" value="{{ old('nidn') }}" required>
                 @error('nidn')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>

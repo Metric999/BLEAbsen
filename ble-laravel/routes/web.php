@@ -37,6 +37,9 @@ Route::middleware(['auth:dosen'])->prefix('dosen')->name('dosen.')->group(functi
 
     // Load daftar mahasiswa saat jadwal dipilih (AJAX / form GET)
     Route::get('/rekap/mahasiswa',            [DosenRekapController::class, 'loadMahasiswa'])->name('rekap.mahasiswa');
+    
+    // Konfirmasi absensi
+    Route::post('/rekap/konfirmasi',          [DosenRekapController::class, 'konfirmasiAbsensi'])->name('rekap.konfirmasi');
 
     // Dosen ubah status absensi mahasiswa (form POST)
     Route::post('/absensi/{id_absensi}/ubah', [DosenRekapController::class, 'ubahStatus'])->name('absensi.ubah');

@@ -10,7 +10,7 @@
         <div class="form-grid">
 
             <div class="form-group">
-                <label>NIDN</label>
+                <label>NIDN/NIK</label>
                 <input type="text" value="{{ $dosen->nidn }}" disabled
                        style="background:#F3F4F6;color:#6B7280;cursor:not-allowed">
             </div>

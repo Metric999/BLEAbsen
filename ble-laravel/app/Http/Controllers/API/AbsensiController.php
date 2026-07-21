@@ -91,6 +91,29 @@ class AbsensiController extends Controller
             'status'    => 'hadir',
         ]);
 
+        // Auto-absen untuk sesi berikutnya di hari yang sama untuk matkul dan kelas yang sama
+        $jadwalSekarang = Jadwal::find($request->id_jadwal);
+        if ($jadwalSekarang) {
+            $jadwalBerikutnya = Jadwal::where('id_matkul', $jadwalSekarang->id_matkul)
+                ->where('kelas', $jadwalSekarang->kelas)
+                ->where('hari', $jadwalSekarang->hari)
+                ->where('jam_mulai', '>', $jadwalSekarang->jam_mulai)
+                ->get();
+
+            foreach ($jadwalBerikutnya as $jb) {
+                Absensi::firstOrCreate(
+                    [
+                        'nim'       => $mahasiswa->nim,
+                        'id_jadwal' => $jb->id_jadwal,
+                        'tanggal'   => today(),
+                    ],
+                    [
+                        'status'    => 'hadir',
+                    ]
+                );
+            }
+        }
+
         return response()->json([
             'message' => 'Absensi berhasil dicatat.',
             'data'    => $absensi->load('jadwal.mataKuliah', 'jadwal.ruangan'),

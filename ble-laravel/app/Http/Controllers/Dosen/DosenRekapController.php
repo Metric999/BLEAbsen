@@ -21,22 +21,38 @@ class DosenRekapController extends Controller
         $dosen = Auth::guard('dosen')->user();
 
         // Ambil semua jadwal milik dosen ini
-        $jadwals = Jadwal::with(['mataKuliah', 'ruangan'])
+        $allJadwals = Jadwal::with(['mataKuliah', 'ruangan'])
             ->where('nidn', $dosen->nidn)
             ->orderByRaw("FIELD(hari,'Senin','Selasa','Rabu','Kamis','Jumat','Sabtu')")
             ->orderBy('jam_mulai')
             ->get();
 
-        // Jadwal yang sedang dipilih (default: jadwal pertama)
+        // Daftar kelas unik dari jadwal dosen
+        $kelasList = $allJadwals->pluck('kelas')->unique()->filter()->values();
+
+        // Kelas yang dipilih (default: kelas pertama)
+        $selectedKelas = $request->query('kelas', $kelasList->first());
+
+        // Jadwal yang sesuai dengan kelas yang dipilih
+        $jadwals = $allJadwals->where('kelas', $selectedKelas)->values();
+
+        // Jadwal yang sedang dipilih
         $selectedId = $request->query('jadwal_id', $jadwals->first()?->id_jadwal);
+        
+        // Pastikan jadwal yang dipilih valid untuk kelas tersebut
         $selectedJadwal = $jadwals->firstWhere('id_jadwal', $selectedId);
+        if (!$selectedJadwal && $jadwals->isNotEmpty()) {
+            $selectedJadwal = $jadwals->first();
+            $selectedId = $selectedJadwal->id_jadwal;
+        }
 
         // Daftar mahasiswa + status absensi hari ini untuk jadwal terpilih
         $mahasiswas = [];
         $summary    = ['hadir' => 0, 'izin' => 0, 'alpha' => 0];
 
-        if ($selectedJadwal) {
-            $mahasiswas = $selectedJadwal->mahasiswas()
+        if ($selectedKelas && $selectedJadwal) {
+            // Ambil semua mahasiswa yang kelasnya sesuai
+            $mahasiswas = \App\Models\Mahasiswa::where('kelas', $selectedKelas)
                 ->orderBy('nama')
                 ->get()
                 ->map(function ($mhs) use ($selectedJadwal) {
@@ -54,18 +70,53 @@ class DosenRekapController extends Controller
                     ];
                 });
 
-            // Hitung summary
+            // Hitung summary keseluruhan sesi (bukan hanya sesi yang dipilih)
+            $jadwalsHariIni = Jadwal::where('id_matkul', $selectedJadwal->id_matkul)
+                ->where('kelas', $selectedKelas)
+                ->where('hari', $selectedJadwal->hari)
+                ->pluck('id_jadwal');
+
+            $allAbsensiHariIni = Absensi::whereIn('id_jadwal', $jadwalsHariIni)
+                ->whereDate('tanggal', today())
+                ->get()
+                ->groupBy('nim');
+
             foreach ($mahasiswas as $mhs) {
-                $summary[$mhs['status']] = ($summary[$mhs['status']] ?? 0) + 1;
+                $absensiGroup = $allAbsensiHariIni->get($mhs['nim']);
+                
+                $overallStatus = 'alpha';
+                if ($absensiGroup) {
+                    $statuses = $absensiGroup->pluck('status');
+                    if ($statuses->contains('hadir')) {
+                        $overallStatus = 'hadir';
+                    } elseif ($statuses->contains('izin')) {
+                        $overallStatus = 'izin';
+                    }
+                }
+                
+                $summary[$overallStatus] = ($summary[$overallStatus] ?? 0) + 1;
             }
+        }
+
+        $isConfirmed = false;
+        if ($selectedKelas && $selectedJadwal) {
+            $isConfirmed = Absensi::whereIn('id_jadwal', $jadwalsHariIni)
+                ->whereDate('tanggal', today())
+                ->where('is_confirmed', true)
+                ->exists();
         }
 
         return view('dosen.rekap', [
             'dosen'          => $dosen,
+            'kelasList'      => $kelasList,
+            'selectedKelas'  => $selectedKelas,
             'jadwals'        => $jadwals,
             'selectedJadwal' => $selectedJadwal,
+            'jadwalsHariIni' => $jadwalsHariIni ?? collect(), // pass schedules list
+            'allAbsensiHariIni' => $allAbsensiHariIni ?? collect(), // pass detailed attendance
             'mahasiswas'     => $mahasiswas,
             'summary'        => $summary,
+            'isConfirmed'    => $isConfirmed,
         ]);
     }
 
@@ -90,6 +141,16 @@ class DosenRekapController extends Controller
             ->where('nidn', $dosen->nidn)
             ->firstOrFail();
 
+        // Cek apakah sudah dikonfirmasi
+        $isConfirmed = Absensi::where('id_jadwal', $jadwal->id_jadwal)
+            ->whereDate('tanggal', today())
+            ->where('is_confirmed', true)
+            ->exists();
+            
+        if ($isConfirmed) {
+            return back()->withErrors(['Ubah Status' => 'Absensi untuk jadwal ini sudah dikonfirmasi dan tidak bisa diubah lagi.']);
+        }
+
         if ($idAbsensi === 0) {
             // Absensi belum ada → buat baru (dosen yang input manual)
             Absensi::create([
@@ -108,9 +169,90 @@ class DosenRekapController extends Controller
                 ]);
         }
 
+        // Auto-update untuk sesi berikutnya di hari yang sama untuk matkul dan kelas yang sama
+        $jadwalBerikutnya = Jadwal::where('id_matkul', $jadwal->id_matkul)
+            ->where('kelas', $jadwal->kelas)
+            ->where('hari', $jadwal->hari)
+            ->where('jam_mulai', '>', $jadwal->jam_mulai)
+            ->get();
+
+        foreach ($jadwalBerikutnya as $jb) {
+            Absensi::updateOrCreate(
+                [
+                    'nim'       => $request->nim,
+                    'id_jadwal' => $jb->id_jadwal,
+                    'tanggal'   => today(),
+                ],
+                [
+                    'status'     => $request->status,
+                    'keterangan' => $request->keterangan,
+                ]
+            );
+        }
+
         return redirect()
-            ->route('dosen.rekap', ['jadwal_id' => $jadwal->id_jadwal])
+            ->route('dosen.rekap', [
+                'kelas'     => $jadwal->kelas,
+                'jadwal_id' => $jadwal->id_jadwal
+            ])
             ->with('success', 'Status absensi berhasil diperbarui.');
+    }
+
+    /**
+     * Dosen melakukan konfirmasi absensi untuk hari dan kelas yang dipilih.
+     * Semua mahasiswa yang belum diabsen akan di-set menjadi 'alpha',
+     * lalu seluruh data absensi untuk jadwal tersebut ditandai is_confirmed = true.
+     */
+    public function konfirmasiAbsensi(Request $request)
+    {
+        $request->validate([
+            'kelas'     => 'required|string',
+            'jadwal_id' => 'required|integer',
+        ]);
+
+        $dosen = Auth::guard('dosen')->user();
+        $selectedJadwal = Jadwal::where('id_jadwal', $request->jadwal_id)
+            ->where('nidn', $dosen->nidn)
+            ->firstOrFail();
+
+        // Ambil semua jadwal dosen untuk kelas dan matkul yang sama hari ini
+        $jadwalsHariIni = Jadwal::where('id_matkul', $selectedJadwal->id_matkul)
+            ->where('kelas', $request->kelas)
+            ->where('hari', $selectedJadwal->hari)
+            ->get();
+            
+        $jadwalIds = $jadwalsHariIni->pluck('id_jadwal');
+
+        // Pastikan semua mahasiswa di kelas tersebut memiliki record absensi
+        $mahasiswas = \App\Models\Mahasiswa::where('kelas', $request->kelas)->get();
+
+        foreach ($mahasiswas as $mhs) {
+            foreach ($jadwalsHariIni as $j) {
+                $absensi = Absensi::where('nim', $mhs->nim)
+                    ->where('id_jadwal', $j->id_jadwal)
+                    ->whereDate('tanggal', today())
+                    ->first();
+
+                if (!$absensi) {
+                    Absensi::create([
+                        'nim'          => $mhs->nim,
+                        'id_jadwal'    => $j->id_jadwal,
+                        'tanggal'      => today(),
+                        'status'       => 'alpha',
+                        'is_confirmed' => true,
+                    ]);
+                } else {
+                    $absensi->update(['is_confirmed' => true]);
+                }
+            }
+        }
+
+        return redirect()
+            ->route('dosen.rekap', [
+                'kelas'     => $request->kelas,
+                'jadwal_id' => $selectedJadwal->id_jadwal
+            ])
+            ->with('success', 'Absensi berhasil dikonfirmasi dan diselesaikan.');
     }
 
     /**
