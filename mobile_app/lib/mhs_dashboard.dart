@@ -110,7 +110,14 @@ class _AbsensiPageState extends State<AbsensiPage> {
       final data = checkResponse.data;
       _jadwal = JadwalModel.fromJson(data['jadwal']);
 
-      setState(() => _status = _DashStatus.ready);
+      if (data['status'] == 'already') {
+        setState(() {
+          _status = _DashStatus.alreadyAbsen;
+          _statusMessage = data['message']?.toString() ?? 'Anda sudah melakukan absensi hari ini.';
+        });
+      } else {
+        setState(() => _status = _DashStatus.ready);
+      }
     } on DioException catch (e) {
       final status = e.response?.data?['status'];
       final message = extractErrorMessage(e);
@@ -388,7 +395,7 @@ class _AbsensiPageState extends State<AbsensiPage> {
   Widget _buildActionButton() {
     final canAbsen = _status == _DashStatus.ready;
     final isSubmitting = _status == _DashStatus.submitting;
-    final isDone = _status == _DashStatus.done;
+    final isDone = _status == _DashStatus.done || _status == _DashStatus.alreadyAbsen;
 
     return ElevatedButton(
       style: ElevatedButton.styleFrom(

@@ -104,7 +104,7 @@ class ApiClient {
   ///  - Emulator Android         -> http://10.0.2.2:8000/api
   ///  - Device fisik (WiFi sama) -> http://<IP-LAPTOP>:8000/api
   ///  - iOS Simulator            -> http://localhost:8000/api
-  static const String baseUrl = 'http://10.20.149.246:8000/api';
+  static const String baseUrl = 'http://192.168.1.11:8000/api';
 
   static Dio? _dio;
 
@@ -207,8 +207,8 @@ class BleScanResultData {
 /// karena nama lokal BLE tidak mendukung karakter "-" di semua perangkat).
 class BleService {
   // UUID harus sama persis dengan di kode ESP32
-  static const String serviceUuid        = 'ea223d75-7211-4992-8bd2-97e16abfee3a';
-  static const String characteristicUuid = '265ffb30-adde-401b-be5a-f667ee5c38a4';
+  static const String serviceUuid        = '3dbd4ea5-de2d-4a0f-aa56-9cb22c045c80';
+  static const String characteristicUuid = 'dbc01b42-153c-4991-bbba-6e97dd546ecf';
 
   static Future<bool> requestPermissions() async {
     final statuses = await [
